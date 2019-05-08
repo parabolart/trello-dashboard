@@ -20,10 +20,22 @@ var SVGtoPDF = require('svg-to-pdfkit');
 
 var trelloIDS = {
   'client': '5c7812a444111f835dd0ca43',
+  'poc': '5c7812b0a95d3333486e74c4',
+  'contactnumber': '5c7812bb8ba143056f12ebae',
+  'contactemail': '5c7812c4d8d40268d8b3873e',
   'bidvalue': '5c7812e25fe9700eb0f72c03',
   'bidsentdate': '5caf8169fb553d1649481657',
+
+  'listemailin': '5c780d8bf8e2634893342172',
+  'listprinting': '5c780fdaf1745e5e1ef9ad08',
+  'listbreakout': '5c780fe10807d615f0de72e6', //estimating
+  'listbreaking': '5cb62ec598effd338e398b24',
+  'listreview': '5c780fefa7947a5486324c7e', //speed bid
+  'listsendbid': '5c780ff410efb72b17454e44',
   'listbidsent': '5c780ff841e6d46153f9ee04',
-  'listemailin': '5c780d8bf8e2634893342172'
+  'listfollowup': '5c7ef4d6534d873556e56600',
+  'listapproval': '5c7810146fd84761af535cef',
+  'listkickoff': '5ca38da403ea0f50ead089d5'
 };
 
 
@@ -40,27 +52,19 @@ Number.prototype.format = function(n, x) {
     return this.toFixed(Math.max(0, ~~n)).replace(new RegExp(re, 'g'), '$&,');
 };
 
-var shortenString = function(str, len=50) {
-  if(str.length >= len){
-    return str.substring(0,len)+"...";
-  } else {
-    return str;
-  }
-}
-
-function selectWhere(data, propertyName, property2, type) {
-    for (var i = 0; i < data.length; i++) {
-        if (data[i][propertyName] == property2) return data[i]['value'][type];
-    }
-    return null;
-}
-
 // test route to make sure everything is working (accessed at GET http://localhost:8080/api)
 //router.get('/', function(req, res) {
 //  res.sendFile(__dirname + '/index.html');
 //  console.log("what is up");
   //res.send('Welcome to our trello lead time calculator !');
 //});
+
+function selectWhere(data, propertyName, property2, type) {
+  for (var i = 0; i < data.length; i++) {
+    if (data[i][propertyName] == property2) return data[i]['value'][type];
+  }
+  return null;
+}
 
 router.get('/myBoards', function(req, res, next){
 		trelloUtils.proxiedRequestGet('https://api.trello.com/1/members/me/boards?filter=open&fields=name', res, next);
@@ -111,6 +115,57 @@ router.get('/lead-time/:idFirstList/:idLastList', function(req,res){
 	    var result = { 'idFirstList': idFirstList, 'idLastList': idLastList, 'leadTime': leadtime, 'leadTimeUnit': trelloUtils.leadTimeUnit, 'details': details};
 
 	    res.json(result);
+	 // }
+	});
+
+});
+
+router.get('/export-3-lists/:idFirstList', function(req,res){
+	var idFirstList = req.params.idFirstList;
+  var board = '5c780c720a100113beb84b44';
+
+	var url = trelloUtils.constructUrl('https://api.trello.com/1/boards/' + board + '/cards/open?fields=id,name,desc,due,idBoard,idList,idLabels,idChecklists,idMembers,dueCompleted&customFieldItems=true&filter=all');
+
+	console.info('GET URL => ' + url);
+
+	proxiedRequest.get(url, function (error, response, body) {
+	 /* if(error) {
+	  	console.error(error);
+	  	res.json(error);
+	  }*/
+	  //if (response.statusCode == 200) {
+	  	console.info('Response OK');
+      body = JSON.parse(body);
+      var details = [];
+      var card, client, poc, contactnumber, contactemail;
+      var html_res = "<h1 style='font-family: Arial'>Needs Printing, Estimating, Speed Bid</h1><table style='font:14px Arial; border: 1px solid #888; border-collapse: collapse;' border='1' cellpadding='4'>";
+
+      html_res += "<tr><td style='background-color:rgb(207, 207, 207)'><b>Job Name</b></td><td style='background-color:rgb(207, 207, 207)'><b>Client Name</b></td><td style='background-color:rgb(207, 207, 207)'><b>Person of Contact</b></td><td style='background-color:rgb(207, 207, 207)'><b>Phone</b></td><td style='background-color:rgb(207, 207, 207)'><b>Email</b></td></tr>";
+
+      for (var i = 0; i < body.length; i++) {
+        card = body[i];
+        if(card.idList === trelloIDS['listprinting'] || card.idList === trelloIDS['listbreakout'] || card.idList === trelloIDS['listreview']) {
+
+          if(card.customFieldItems.length !== 0){
+
+            client = selectWhere(card.customFieldItems, 'idCustomField', trelloIDS['client'], 'text');
+            poc = selectWhere(card.customFieldItems, 'idCustomField', trelloIDS['poc'], 'text');
+            contactnumber = selectWhere(card.customFieldItems, 'idCustomField', trelloIDS['contactnumber'], 'text');
+            contactemail = selectWhere(card.customFieldItems, 'idCustomField', trelloIDS['contactemail'], 'text');
+
+          }
+
+          details.push({ 'list': card.idList, 'id': card.id, 'name': card.name, 'client': client, 'POC': poc, 'contactnumber': contactnumber, 'contactemail': contactemail, 'desc': card.desc });
+          html_res += ('<tr><td style="background-color: rgb(190, 237, 255); width:45%">'+card.name+'</td><td style="background-color: rgb(255, 190, 190);">'+client+'</td><td style="background-color: rgb(190, 210, 255);">'+poc+'</td><td style="background-color: rgb(219, 255, 190);">'+contactnumber+'</td><td style="background-color: rgb(255, 248, 190);">'+contactemail+'</td></tr>');
+          html_res += ('<tr><td colspan="5">'+card.desc+'</td></tr><tr><td colspan="5" height="3" style="background-color: rgb(231, 230, 158);"></td></tr>');
+
+        }
+      }
+
+      var result = {'details': details};
+      html_res += ('</table>');
+      //res.json(result);
+      res.send(html_res);
 	 // }
 	});
 
@@ -257,6 +312,7 @@ router.get('/hmh-bids-sent-week', function(req,res){
       var svg_email = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 118.13 60.53"><defs><style>.cls-1{fill:#231f20;}</style></defs><title>Asset 2</title><g id="Layer_2" data-name="Layer 2"><g id="Layer_1-2" data-name="Layer 1"><path class="cls-1" d="M4.92,19.75c2.34-8.62,9.89-14.14,18.72-14.7A23.9,23.9,0,0,1,36.92,7.82c4.15,2.45,5.95,6.68,7.63,11a2.53,2.53,0,0,0,4.82,0,75.1,75.1,0,0,0,3-9.94c.72-3.14-4.1-4.47-4.82-1.33a75.1,75.1,0,0,1-3,9.94h4.82C47.57,12.85,45.61,8.1,41.6,5,36.72,1.12,29.72-.3,23.64.05,12.63.68,3,7.64.1,18.42c-.85,3.11,4,4.44,4.82,1.33Z"/><path class="cls-1" d="M47.62,15.72c-3.2-.89-6.44-1.76-9.71-2.37s-4.49,4.24-1.33,4.83,6.51,1.47,9.71,2.36,4.43-4,1.33-4.82Z"/><path class="cls-1" d="M115,41.41,49.76,55.64l3.07,1.75L45.48,23.68l-1.75,3.08L109,12.52l-3.08-1.75,7.36,33.71c.69,3.14,5.51,1.81,4.82-1.33l-7.35-33.7a2.55,2.55,0,0,0-3.08-1.75L42.4,21.94A2.55,2.55,0,0,0,40.65,25L48,58.72a2.54,2.54,0,0,0,3.08,1.74l65.23-14.23C119.46,45.54,118.13,40.72,115,41.41Z"/><path class="cls-1" d="M42.4,26.76,62,32,73.89,35.2c1.64.44,4.35,1.75,6.13,1.29s3.65-2.75,4.94-3.81l9.49-7.87,15.61-12.93c2.48-2.06-1.07-5.58-3.53-3.54l-28.94,24L80,31.67,43.73,21.94c-3.11-.84-4.44,4-1.33,4.82Z"/></g></g></svg>';
       var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52.4 21.52"><defs><style>.cls-1{fill:#231f20;}</style></defs><title>Asset 1</title><g id="Layer_2" data-name="Layer 2"><g id="Layer_1-2" data-name="Layer 1"><path class="cls-1" d="M4.92,19.75c2.34-8.62,9.89-14.14,18.72-14.7A23.9,23.9,0,0,1,36.92,7.82c4.15,2.45,5.95,6.68,7.63,11a2.53,2.53,0,0,0,4.82,0,75.1,75.1,0,0,0,3-9.94c.72-3.14-4.1-4.47-4.82-1.33a75.1,75.1,0,0,1-3,9.94h4.82C47.57,12.85,45.61,8.1,41.6,5,36.72,1.12,29.72-.3,23.64.05,12.63.68,3,7.64.1,18.42c-.85,3.11,4,4.44,4.82,1.33Z"/><path class="cls-1" d="M47.62,15.72c-3.2-.89-6.44-1.76-9.71-2.37s-4.49,4.24-1.33,4.83,6.51,1.47,9.71,2.36,4.43-4,1.33-4.82Z"/></g></g></svg>';
 	    //console.log('length = ' + body.length);
+
 	    for (var i = 0; i < body.length; i++) {
 	    	card = body[i];
         if(card.actions.length !== 0 && !card.closed) {
@@ -275,7 +331,7 @@ router.get('/hmh-bids-sent-week', function(req,res){
           }
 
           //console.log(card.actions);
-          if(thisweek == momentcardtime.isoWeek()){
+          //if(thisweek == momentcardtime.isoWeek()){ THIS IS WHAT NEEDS TO COME BACK FOR WEEKLY
             if(card.customFieldItems.length !== 0){
               //console.log(card.customFieldItems);
               client = selectWhere(card.customFieldItems, 'idCustomField', trelloIDS['client'], 'text');
@@ -331,13 +387,13 @@ router.get('/hmh-bids-sent-week', function(req,res){
               j++;
             }
             bids++;
-          }
+          //}
         }
 	    }
 
       doc.font('fonts/Lora-Bold.ttf')
         .fontSize(16)
-        .text("Bids sent this week: "+bids, 50, 50, {
+        .text("Bids sent: "+bids, 50, 50, { //"Bids sent this week:
           lineBreak: false,
           ellipsis: '...',
           width: 300,
@@ -353,15 +409,16 @@ router.get('/hmh-bids-sent-week', function(req,res){
           height: 20,
           indent: 0
         });
-      doc.font('fonts/Lora-Regular.ttf')
-        .fontSize(16)
-        .text("Week: "+weekto, 50, 30, {
-          lineBreak: false,
-          ellipsis: '...',
-          width: 500,
-          height: 20,
-          indent: 0
-        });
+
+      //doc.font('fonts/Lora-Regular.ttf')
+      //  .fontSize(16)
+      //  .text("Week: "+weekto, 50, 30, {
+      //    lineBreak: false,
+      //    ellipsis: '...',
+      //    width: 500,
+      //    height: 20,
+      //    indent: 0
+      //  });
 
       doc.end();
 

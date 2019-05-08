@@ -1,0 +1,204 @@
+<!doctype html>
+<html>
+
+<head>
+  <title>Socket.IO chat</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font: 13px Helvetica, Arial;
+    }
+
+    form {
+      background: #000;
+      padding: 3px;
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+    }
+
+    form input {
+      border: 0;
+      padding: 10px;
+      width: 90%;
+      margin-right: .5%;
+    }
+
+    form button {
+      width: 9%;
+      background: rgb(130, 224, 255);
+      border: none;
+      padding: 10px;
+    }
+
+    #messages {
+      list-style-type: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    #messages li {
+      padding: 5px 10px;
+    }
+
+    #messages li:nth-child(odd) {
+      background: #eee;
+    }
+
+    #messages {
+      margin-bottom: 40px
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="myChart" width="400" height="100"></canvas>
+  <ul id="messages"></ul>
+  <form action="">
+    <input id="m" autocomplete="off" /><button>Send</button>
+  </form>
+  <script src="https://cdn.socket.io/socket.io-1.2.0.js"></script>
+  <script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+  <script src="js/Chart.js"></script>
+  <script>
+    //var Chart = require('./js/chart.js');
+    var ctx = $('#myChart');
+    var trello = [ '5c780d8bf8e2634893342172', '5c780fdaf1745e5e1ef9ad08', '5c780fe10807d615f0de72e6', '5cb62ec598effd338e398b24', '5c780fefa7947a5486324c7e', '5c780ff410efb72b17454e44', '5c780ff841e6d46153f9ee04' ];
+
+    var myChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['Red', 'Blue', 'Yellow', 'Green', 'Purple', 'Orange', 'Lime'],
+        datasets: [{
+          label: '# of Cards',
+          data: [12, 19, 3, 5, 2, 3, 10],
+          backgroundColor: 'rgba(255, 99, 132, 1.0)',
+          borderColor: 'rgba(255, 99, 132, 1)',
+          borderWidth: 1
+        },
+        {
+          label: '# of Cards',
+          data: [12, 19, 3, 5, 2, 3, 10],
+          backgroundColor: 'rgba(54, 162, 235, 1.0)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          borderWidth: 1
+        },
+        {
+          label: '# of Cards',
+          data: [12, 19, 3, 5, 2, 3, 10],
+          backgroundColor: 'rgba(255, 206, 86, 1.0)',
+          borderColor:'rgba(255, 206, 86, 1)',
+          borderWidth: 1
+        },
+        {
+          label: '# of Cards',
+          data: [12, 19, 3, 5, 2, 3, 10],
+          backgroundColor:'rgba(75, 192, 192, 1.0)',
+          borderColor: 'rgba(75, 192, 192, 1)',
+          borderWidth: 1
+        },
+        {
+          label: '# of Cards',
+          data: [12, 19, 3, 5, 2, 3, 10],
+          backgroundColor: 'rgba(255, 159, 64, 1.0)',
+          borderColor: 'rgba(255, 159, 64, 1)',
+          borderWidth: 1
+        },
+        {
+          label: '# of Cards',
+          data: [12, 19, 3, 5, 2, 3, 10],
+          backgroundColor: 'rgba(120, 232, 21, 1.0)',
+          borderColor: 'rgba(122, 194, 75, 1)',
+          borderWidth: 1
+        },
+        {
+          label: '# of Cards',
+          data: [12, 19, 3, 5, 2, 3, 10],
+          backgroundColor:'rgba(171, 21, 232, 1)',
+          borderColor: 'rgba(145, 75, 194, 1)',
+          borderWidth: 1
+        }]
+      },
+      options: {
+				responsive: true,
+				title: {
+					display: true,
+					text: 'Chart.js Line Chart - Stacked Area'
+				},
+				tooltips: {
+					mode: 'index',
+				},
+				hover: {
+					mode: 'index'
+				},
+				scales: {
+					xAxes: [{
+						scaleLabel: {
+							display: true,
+							labelString: 'Month'
+						}
+					}],
+					yAxes: [{
+						stacked: true,
+						scaleLabel: {
+							display: true,
+							labelString: 'Value'
+						},
+            ticks: {
+              beginAtZero: true
+            }
+					}]
+				}
+			}
+    });
+  </script>
+  <script>
+    Object.size = function(obj) {
+        var size = 0, key;
+        for (key in obj) {
+            if (obj.hasOwnProperty(key)) size++;
+        }
+        return size;
+    }
+    function addDataset(val) {
+      myChart.data.datasets[0].data = [ Object.size(val['5c780d8bf8e2634893342172']), Object.size(val['5c780fdaf1745e5e1ef9ad08']), Object.size(val['5c780fe10807d615f0de72e6']), Object.size(val['5cb62ec598effd338e398b24']), Object.size(val['5c780fefa7947a5486324c7e']), Object.size(val['5c780ff410efb72b17454e44']), Object.size(val['5c780ff841e6d46153f9ee04']) ];
+      myChart.data.datasets[0].label = val[0];
+      myChart.data.labels = [ "email in","needs printing","needs breakout","breaking out","needs review", "send bid", "bind sent" ];
+      //myChart.data.labels = [ "t-5","t-4","t-3","t-2","t-1", val[0] ];
+      myChart.update();
+    }
+    $(function() {
+      var socket = io();
+      $('form').submit(function() {
+        socket.emit('chat message', $('#m').val());
+        $('#m').val('');
+        return false;
+      });
+      socket.on('chat message', function(msg) {
+        console.log(JSON.stringify(msg[0]).length);
+        if(JSON.stringify(msg[0]).length == 12) { addDataset(msg); }
+        $('#messages').append($('<li>').text(msg));
+        window.scrollTo(0, document.body.scrollHeight);
+      });
+      $("#myChart").click(function(e) {
+         let activePoints = myChart.getElementAtEvent(e);
+         //var clickedElementIndex = activePoints[0]._index;
+         //var label = chart.data.labels[clickedElementIndex];
+         if ( activePoints.length > 0) {
+           //console.log(myChart.data.datasets[activePoints[0]._datasetIndex].data[activePoints[0]._index]);
+           //console.log(myChart.data.labels[activePoints[0]._index]);
+           //console.log(trello[activePoints[0]._index]);
+           //socket.emit('chat message', trello[activePoints[0]._index]);
+           socket.emit('chat message', )
+         }
+      });
+    });
+  </script>
+</body>
+
+</html>
